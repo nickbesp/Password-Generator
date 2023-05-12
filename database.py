@@ -34,20 +34,23 @@ def saveData(logins):
     con = sql.connect('data.db')
     cur = con.cursor()
 
-    log_list = cur.execute('SELECT login FROM users').fetchall()
-    for i in range(len(log_list)):
-        log_list[i] = log_list[i][0]
-    print(log_list)
+    cur.execute('DROP TABLE IF EXISTS users')
+    cur.execute('CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY, login TEXT, password TEXT, shifr TEXT)')
+
+    # log_list = cur.execute('SELECT login FROM users').fetchall()
+    # for i in range(len(log_list)):
+    #     log_list[i] = log_list[i][0]
+    # print(log_list)
+    
     for login in logins:
-        if login not in log_list:
-            elem = logins[login]
-            log = login
-            passw = str(elem.somelock)
-            shifr_list = elem.someshifr
-            shif = str()
-            for i in shifr_list:
-                shif += i + ' '
-            cur.execute('INSERT INTO users(login, password, shifr) VALUES(?, ?, ?)', [log, passw, shif])
+        elem = logins[login]
+        log = login
+        passw = str(elem.somelock)
+        shifr_list = elem.someshifr
+        shif = str()
+        for i in shifr_list:
+            shif += i + ' '
+        cur.execute('INSERT INTO users(login, password, shifr) VALUES(?, ?, ?)', [log, passw, shif])
 
     con.commit()
     cur.close()
