@@ -1,39 +1,92 @@
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QHBoxLayout, QVBoxLayout, QLineEdit, QPushButton, QMessageBox
-from random import shuffle
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QHBoxLayout, QVBoxLayout, QLineEdit, QPushButton, QMessageBox, QSplitter, QTextEdit, QPlainTextEdit, QScrollBar, QFrame
+from random import shuffle, randint
 from database import *
 
+#Добавление пользователя
 def addUser(login, lock):
     global logins
-    shuffle(shifr1)
-    logins[login] = Users(lock, shifr1)
+
+    s = list()
+    for i in range(len(shifr1)):
+        s.append(shifr1[i])
+
+    new_shifr = do_random_shifr(s)
+    
+    logins[login] = Users(lock, new_shifr)
     saveData(logins)
     pass
 
+def createPresentableUsersData(logins):
+    result = 'num | login | password | shifr \n'
+    k = 0
+    for login in logins:
+        k += 1
+        elem = logins[login]
+        log = login
+        passw = str(elem.somelock)
+
+        shifr_list = elem.someshifr
+        shif = str()
+        for i in shifr_list:
+            shif += i + ' '
+        
+        result += f' {k}   |  {log}  |  {passw}  |  {shif} \n'
+
+    return result
+
+#Создание рандомного шифра
+def do_random_shifr(s):
+    length = len(s)
+    shifr_1 = list()
+
+    for i in range(length):
+        shifr_1.append(s[i])
+
+    for i in range(length):
+        ind = randint(0, len(s) - 1)
+        shifr_1[i] = s[ind]
+        s.pop(ind)
+
+    return shifr_1
+
+#Окно администратора
 def ADWindow():
+    global usersList
+
     adWin = QWidget()
     adWin.setWindowTitle('Admin')
-    adWin.setFixedSize(300, 250)
+    adWin.resize(1000, 1080)
 
-    getListButton = QPushButton('Список пользователей')
-    #getListButton.clicked.connect(showlistwin)
+    data = createPresentableUsersData(logins)
+    usersList = QPlainTextEdit(data)
+    usersList.setSizePolicy(900, 900)
+    usersList.setReadOnly(True)
+
+    listSplitter1 = QSplitter(Qt.Vertical)
+    listSplitter1.addWidget(usersList)
+
     addButton = QPushButton('Добавить пользователя')
     addButton.clicked.connect(showaddwin)
     deleteButton = QPushButton('Удалить пользователя')
-    #deleteButton.clicked.connect(showdelwin)
+    deleteButton.clicked.connect(showdelwin)
     backButton = QPushButton('Назад')
-    deleteButton.clicked.connect(showlogAd)
+    backButton.clicked.connect(showlogAd)
 
     v_line = QVBoxLayout()
-    v_line.addWidget(getListButton, alignment=Qt.AlignCenter)
     v_line.addWidget(addButton, alignment=Qt.AlignCenter)
     v_line.addWidget(deleteButton, alignment=Qt.AlignCenter)
     v_line.addWidget(backButton, alignment=Qt.AlignCenter)
+
+    h_line = QHBoxLayout()
+    h_line.addWidget(listSplitter1)
+    h_line.addLayout(v_line)
     
-    adWin.setLayout(v_line)
+    adWin.setLayout(h_line)
 
     return adWin
 
+#Окно проверки админского пароля
 def CHwindow():
     global userPassword
     chWin = QWidget()
@@ -57,6 +110,7 @@ def CHwindow():
 
     return chWin
 
+#Окно для добавления пользователя
 def ADDwindow():
     global newLogin, newPassword
 
@@ -79,12 +133,47 @@ def ADDwindow():
 
     return addWin
 
-def LISTwindow():
-    pass
-
+#Окно для удаления пользователя
 def DELwindow():
-    pass
+    global dellog
+    delWin = QWidget()
 
+    dellog = QLineEdit()
+    dellog.setPlaceholderText('Логин')
+
+    confButton = QPushButton('Подтвердить')
+    confButton.clicked.connect(delUserAd)
+
+    v_line = QVBoxLayout()
+    v_line.addWidget(dellog, alignment=Qt.AlignCenter)
+    v_line.addWidget(confButton, alignment=Qt.AlignCenter)
+
+    delWin.setLayout(v_line)
+
+    return delWin
+
+#Удаление пользователя
+def delUserAd():
+    log = dellog.text()
+    dellog.clear()
+
+    if log in logins:
+        del logins[log]
+        saveData(logins)
+        messageBox('Completed', 'Пользователь удален!')
+        usersList.setPlainText(createPresentableUsersData(logins))
+        delWindow.hide()
+
+    else:
+        messageBox('Error', 'Пользователь не найден!')
+
+def messageBox(title, text):
+    messWin = QMessageBox()
+    messWin.setWindowTitle(title)                                 #addTrue
+    messWin.setText(text)
+    messWin.exec()
+
+#Добавление пользователя от имнеи админа
 def addUserAd():
     global newLogin, newPassword, logins
 
@@ -92,58 +181,41 @@ def addUserAd():
     pas = newPassword.text()
     newLogin.clear()
     newPassword.clear()
-    addWindow.hide()
 
-    if log in logins or len(log) == 0 or len(pas) == 0:
-        addFalse()
+    if log in logins:
+        messageBox('Error', 'Пользователь уже существует!')
+    elif len(log) == 0 or len(pas) == 0:
+        messageBox('Error', 'Логин и пароль должны быть заполнены!')
     else:
         addUser(log, pas)
-        messWin = QMessageBox()
-        messWin.setWindowTitle('Accepted')                                 #addTrue
-        messWin.setText('Пользователь добавлен!')
-        messWin.exec()
+        messageBox('Completed', 'Пользователь добавлен!')
+        usersList.setPlainText(createPresentableUsersData(logins))
 
-    adminWin.show()
-
-def addFalse():
-    messWin = QMessageBox()
-    messWin.setWindowTitle('Error')
-    messWin.setText('Пользователь уже существует или логин или пароль - пусты!')
-    messWin.exec()
+        addWindow.hide()
 
 def adCheck():
     currPass = userPassword.text()
     userPassword.clear()
     checkWin.hide()
     if currPass == '1234 ':
+        data = createPresentableUsersData(logins)
+        usersList.setPlainText(data)
         adminWin.show()
     else:
-        accessFalse()
+        messageBox('Error', 'Доступ запрещен!')
         logWin.show()
 
-def accessFalse():
-    messWin = QMessageBox()
-    messWin.setWindowTitle('Error')
-    messWin.setText('Доступ запрещен!')
-    messWin.exec()
-
-def showAdmin():
-    adminWin.show()
-
 def showaddwin():
-    adminWin.hide()
     addWindow.show()
 
 def showdelwin():
-    pass
+    delWindow.show()
 
 def showlogAd():
     adminWin.hide()
     logWin.show()
 
-def showlistwin():
-    pass
-
+#Главное окно
 def LOGwindow():
     global logLine, passLine, errTitle
 
@@ -154,7 +226,6 @@ def LOGwindow():
     title = QLabel('Добро пожаловать! Введите свой логин и пароль!')
     logtitle = QLabel('Логин:')
     passtitle = QLabel('Пароль:')
-    errTitle = QLabel('')
 
     logLine = QLineEdit('')
 
@@ -180,7 +251,6 @@ def LOGwindow():
     v_line.addLayout(h_line2)
     v_line.addWidget(enterButton, alignment = Qt.AlignCenter)
     v_line.addWidget(adEnterButton, alignment = Qt.AlignCenter)
-    v_line.addWidget(errTitle, alignment = Qt.AlignCenter)
 
     logWin.setLayout(v_line)
 
@@ -193,25 +263,28 @@ def showlog():
     logWin.show()
     nameLine.clear()
 
+#Проверка логина и пароля пользователя
 def logCheck():
     global login, lock
     login = logLine.text()
     lock = passLine.text()
     if login in logins:
         if not logins[login].somelock == lock:
-            errTitle.setText('Неправильный логин или пароль!')
+            messageBox('Error', 'Неправильный логин или пароль!')
         else:
             showpass()
+    elif login == '' or lock == '':
+        messageBox('Error', 'Логин и пароль обязательно должны быть заполненными!')
     else:
         addUser(login, lock)
         showpass()
 
 def showCheck():
     passLine.clear()
-    errTitle.setText('')
     logWin.hide()
     checkWin.show()
 
+#Окно генерации паролей
 def PASSwindow():
     global nameLine, passwLine
 
@@ -228,7 +301,7 @@ def PASSwindow():
     passwLine.setReadOnly(True)
 
     generButton = QPushButton('Пароль')
-    generButton.clicked.connect(generation)
+    generButton.clicked.connect(generate)
 
     exitButton = QPushButton('Выход')
     exitButton.clicked.connect(showlog)
@@ -251,7 +324,8 @@ def PASSwindow():
 
     return passWin
 
-def generation():
+#Генерация пароля
+def generate():
     webName = nameLine.text()
     alph = 'abcdefghijklmnopqrstuvwxyz1234567890.-'
     webName.lower()
@@ -263,7 +337,6 @@ def generation():
 
 def showpass():
     passLine.clear()
-    errTitle.setText('')
     logWin.hide()
     passWin.show()
 
@@ -282,18 +355,15 @@ if __name__ == "__main__":
 
     logins = dict()
     logins1 = getData()
-    #print(logins1)
     for k, v in logins1.items():
         logins[k] = Users(v[0], v[1].split())
-        # print(k)
-        # print(v[0])
-        # print(v[1])
 
     logWin = LOGwindow()
     passWin = PASSwindow()
     checkWin = CHwindow()
     adminWin = ADWindow()
     addWindow = ADDwindow()
+    delWindow = DELwindow()
     
     logWin.show()
     
